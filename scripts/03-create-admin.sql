@@ -1,0 +1,34 @@
+-- Admin Creation Instructions
+-- This script is no longer needed as admin creation is now handled via the setup wizard
+
+-- SETUP WIZARD APPROACH (Recommended):
+-- 1. Run scripts 01-init-schema.sql and 02-seed-apartments.sql
+-- 2. Start your Next.js application: npm run dev
+-- 3. Open http://localhost:3000 in your browser
+-- 4. You will be automatically redirected to /setup
+-- 5. Fill out the admin account form with your credentials:
+--    - Full Name: Your name
+--    - Email: Your email
+--    - Password: Strong password (min 6 characters)
+--    - Confirm Password: Same as above
+-- 6. Click "Create Admin Account"
+-- 7. You will be redirected to sign in
+-- 8. Sign in with your credentials to access the admin dashboard
+
+-- The setup wizard will automatically:
+-- - Create your Supabase Auth user
+-- - Create your admin user record in the users table
+-- - Assign you the 'admin' role
+-- - Redirect you to the admin dashboard
+
+-- If you prefer manual SQL creation instead:
+-- 1. First, manually create an auth user in Supabase:
+--    - Go to Supabase dashboard
+--    - Go to Authentication > Users
+--    - Click "Add user"
+--    - Enter your email and password
+--    - Copy the UUID
+-- 2. Then run the INSERT query below with the actual UUID:
+--
+-- INSERT INTO users (id, email, full_name, role, apartment_id, is_active, created_at, updated_at)
+-- VALUES ('{PASTE_UUID_HERE}', 'iva@primer.com', 'Ivan Tomic', 'admin', NULL, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
