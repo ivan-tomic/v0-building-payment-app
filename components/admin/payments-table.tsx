@@ -12,19 +12,19 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
           <thead className="bg-muted border-b border-border">
             <tr>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                Стан
+                Stan
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                Месец/Година
+                Mjesec/Godina
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                Износ
+                Iznos
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                Датум плаћања
+                Datum plaćanja
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                Метод плаћања
+                Metod plaćanja
               </th>
             </tr>
           </thead>
@@ -32,14 +32,14 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
             {payments.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
-                  Нема плаћања
+                  Nema plaćanja
                 </td>
               </tr>
             ) : (
               payments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-muted/50">
                   <td className="px-6 py-4 text-sm text-foreground">
-                    Стан {payment.apartments?.apartment_number}
+                    Stan {payment.apartments?.apartment_number}
                   </td>
                   <td className="px-6 py-4 text-sm text-foreground">
                     {payment.month}/{payment.year}

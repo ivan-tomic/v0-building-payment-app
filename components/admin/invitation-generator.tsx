@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
 interface InvitationGeneratorProps {
@@ -25,8 +25,7 @@ export default function InvitationGenerator({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Fetch available apartments
-  useState(() => {
+  useEffect(() => {
     const fetchApartments = async () => {
       try {
         const { data, error } = await supabase
@@ -45,7 +44,7 @@ export default function InvitationGenerator({
     }
 
     fetchApartments()
-  }, [])
+  }, [supabase])
 
   const generateCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase()

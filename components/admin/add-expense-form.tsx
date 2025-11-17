@@ -44,7 +44,7 @@ export default function AddExpenseForm({
         year: new Date().getFullYear(),
       })
     } catch (err: any) {
-      setError(err.message || 'Грешка при сачувавању трошка')
+      setError(err.message || 'Greška pri sačuvavanju troška')
     } finally {
       setLoading(false)
     }
@@ -54,7 +54,7 @@ export default function AddExpenseForm({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-foreground">Додај трошак</h2>
+          <h2 className="text-xl font-bold text-foreground">Dodaj trošak</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
@@ -72,7 +72,7 @@ export default function AddExpenseForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Назив трошка
+              Naziv troška
             </label>
             <input
               type="text"
@@ -80,13 +80,13 @@ export default function AddExpenseForm({
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
-              placeholder="нпр. Поправка кровa"
+              placeholder="npr. Popravka krova"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Износ (BAM)
+              Iznos (BAM)
             </label>
             <input
               type="number"
@@ -101,24 +101,24 @@ export default function AddExpenseForm({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Категорија
+              Kategorija
             </label>
             <select
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
             >
-              <option value="repair">Поправке</option>
-              <option value="maintenance">Одржавање</option>
-              <option value="utilities">Комунално</option>
-              <option value="cleaning">Чишћење</option>
-              <option value="other">Друго</option>
+              <option value="repair">Popravke</option>
+              <option value="maintenance">Održavanje</option>
+              <option value="utilities">Komunalno</option>
+              <option value="cleaning">Čišćenje</option>
+              <option value="other">Drugo</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Датум трошка
+              Datum troška
             </label>
             <input
               type="date"
@@ -132,7 +132,7 @@ export default function AddExpenseForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Месец
+                Mjesec
               </label>
               <input
                 type="number"
@@ -146,7 +146,7 @@ export default function AddExpenseForm({
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Година
+                Godina
               </label>
               <input
                 type="number"
@@ -161,14 +161,14 @@ export default function AddExpenseForm({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Опис
+              Opis
             </label>
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary resize-none"
-              placeholder="Детаљи трошка..."
+              placeholder="Detalji troška..."
             />
           </div>
 
@@ -178,14 +178,14 @@ export default function AddExpenseForm({
               disabled={loading}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Чувам...' : 'Сачувај трошак'}
+              {loading ? 'Čuvam...' : 'Sačuvaj trošak'}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-input text-foreground rounded-lg hover:bg-muted transition-colors"
             >
-              Отказ
+              Otkaz
             </button>
           </div>
         </form>

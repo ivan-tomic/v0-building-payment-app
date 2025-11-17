@@ -95,6 +95,16 @@ export default function TenantsPage() {
         <div className="text-center py-12">
           <p className="text-muted-foreground">Učitavanje...</p>
         </div>
+      ) : tenants.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground mb-4">Nema stanova u bazi podataka.</p>
+          <a
+            href="/seed-apartments"
+            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Dodaj stanove
+          </a>
+        </div>
       ) : (
         <TenantsList tenants={tenants} />
       )}

@@ -73,15 +73,15 @@ export default function DelinquentTenants({
     <div className="bg-card border border-border rounded-lg p-6">
       <div className="flex items-center gap-2 mb-6">
         <AlertTriangle className="w-5 h-5 text-red-500" />
-        <h2 className="text-lg font-bold text-foreground">Дугови</h2>
+        <h2 className="text-lg font-bold text-foreground">Dugovi</h2>
         <span className="ml-auto text-sm text-muted-foreground">
-          {delinquents.length} станара
+          {delinquents.length} stanara
         </span>
       </div>
 
       {delinquents.length === 0 ? (
         <p className="text-center py-8 text-muted-foreground">
-          Сви станари су плаћали!
+          Svi stanari su platili!
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -89,13 +89,13 @@ export default function DelinquentTenants({
             <thead className="bg-muted border-b border-border">
               <tr>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Стан
+                  Stan
                 </th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Спрат
+                  Sprat
                 </th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Станар
+                  Stanar
                 </th>
                 <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                   Email

@@ -77,7 +77,7 @@ export default function FloorCollectionChart({
   return (
     <div className="bg-card border border-border rounded-lg p-6">
       <h2 className="text-lg font-bold text-foreground mb-6">
-        Наплата по спратовима
+        Naplata po spratovima
       </h2>
 
       <div className="space-y-6">
@@ -85,7 +85,7 @@ export default function FloorCollectionChart({
           <div key={floor.floor}>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-foreground">
-                Спрат {floor.floor}
+                Sprat {floor.floor}
               </span>
               <span className="text-sm text-muted-foreground">
                 {floor.paid}/{floor.paid + floor.unpaid}
@@ -98,7 +98,7 @@ export default function FloorCollectionChart({
               />
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {floor.percentage}% плаћено
+              {floor.percentage}% plaćeno
             </p>
           </div>
         ))}

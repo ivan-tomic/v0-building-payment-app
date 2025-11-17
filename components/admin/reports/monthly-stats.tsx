@@ -67,25 +67,25 @@ export default function MonthlyStats({ month, year }: MonthlyStatsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatsCard
-        title="Очекивани приход"
+        title="Očekivani prihod"
         value={`${stats.expected.toFixed(2)} BAM`}
         icon={DollarSign}
         color="bg-blue-500"
       />
       <StatsCard
-        title="Наплаћено"
+        title="Naplaćeno"
         value={`${stats.collected.toFixed(2)} BAM`}
         icon={CheckCircle}
         color="bg-green-500"
       />
       <StatsCard
-        title="Процент наплате"
+        title="Procenat naplate"
         value={`${stats.collectionRate}%`}
         icon={Percent}
         color="bg-purple-500"
       />
       <StatsCard
-        title="Дугови"
+        title="Dugovi"
         value={stats.delinquent}
         icon={AlertCircle}
         color="bg-red-500"

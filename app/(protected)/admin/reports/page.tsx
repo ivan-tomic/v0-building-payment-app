@@ -37,7 +37,7 @@ export default function ReportsPage() {
         .from('apartments')
         .select('*')
 
-      let csv = 'Месец,Години,Стан,Спрат,Износ\n'
+      let csv = 'Mjesec,Godina,Stan,Sprat,Iznos\n'
 
       apartments?.forEach((apt) => {
         const payment = payments?.find((p) => p.apartment_id === apt.id)
@@ -68,9 +68,9 @@ export default function ReportsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Извештаји</h1>
+          <h1 className="text-3xl font-bold text-foreground">Izvještaji</h1>
           <p className="text-muted-foreground mt-1">
-            Анализа плаћања и трошкова
+            Analiza plaćanja i troškova
           </p>
         </div>
         <button
@@ -78,14 +78,14 @@ export default function ReportsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
           <Download className="w-5 h-5" />
-          Преузми CSV
+          Preuzmi CSV
         </button>
       </div>
 
       <div className="mb-8 flex gap-4">
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Месец
+            Mjesec
           </label>
           <select
             value={selectedMonth}
@@ -101,7 +101,7 @@ export default function ReportsPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground mb-2">
-            Година
+            Godina
           </label>
           <select
             value={selectedYear}
@@ -121,7 +121,7 @@ export default function ReportsPage() {
 
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Учитавање...</p>
+          <p className="text-muted-foreground">Učitavanje...</p>
         </div>
       ) : (
         <div className="space-y-8">

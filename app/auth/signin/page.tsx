@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock } from 'lucide-react'
 
@@ -12,6 +12,16 @@ export default function SigninPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam === 'profile_not_found') {
+      setError('Vaš korisnički profil nije pronađen u bazi podataka. Molimo koristite stranicu za čišćenje i kreirajte novi nalog.')
+    } else if (errorParam === 'profile_fetch_error') {
+      setError('Greška pri učitavanju profila. Ovo je vjerovatno problem sa RLS politikama.')
+    }
+  }, [searchParams])
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,21 +34,45 @@ export default function SigninPage() {
     setLoading(true)
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
+      console.log('[v0] Attempting signin for:', email)
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (authError) {
+        console.error('[v0] Auth error:', authError)
         setError(authError.message)
         setLoading(false)
         return
       }
 
-      router.push('/dashboard')
+      if (data.user) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profileError || !profileData) {
+          console.error('[v0] Profile error:', profileError)
+          setError('Greška pri učitavanju profila')
+          setLoading(false)
+          return
+        }
+
+        console.log('[v0] Signin successful, redirecting to', profileData.role, 'dashboard')
+        
+        // Redirect based on role
+        if (profileData.role === 'admin') {
+          router.push('/admin')
+        } else {
+          router.push('/tenant')
+        }
+      }
     } catch (err) {
+      console.error('[v0] Signin exception:', err)
       setError('Neočekivana greška')
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -60,6 +94,22 @@ export default function SigninPage() {
           {error && (
             <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-3">
               <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              {error.includes('RLS') && (
+                <Link 
+                  href="/fix-rls" 
+                  className="text-sm text-red-600 dark:text-red-400 underline mt-2 block"
+                >
+                  Popravi RLS politike →
+                </Link>
+              )}
+              {(error.includes('profil') || error.includes('bazi')) && (
+                <Link 
+                  href="/cleanup" 
+                  className="text-sm text-red-600 dark:text-red-400 underline mt-2 block"
+                >
+                  Idi na stranicu za čišćenje podataka
+                </Link>
+              )}
             </div>
           )}
 

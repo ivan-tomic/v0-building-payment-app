@@ -11,16 +11,15 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && profile) {
       if (profile.role === 'admin') {
-        router.push('/admin')
+        router.replace('/admin')
       } else if (profile.role === 'tenant') {
-        router.push('/tenant')
+        router.replace('/tenant')
       }
     }
   }, [profile, loading, router])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      {/* Translated to Bosnian */}
       <p className="text-foreground">Učitavanje...</p>
     </div>
   )

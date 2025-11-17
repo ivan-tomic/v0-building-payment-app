@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 
 interface AddPaymentFormProps {
@@ -26,9 +26,22 @@ export default function AddPaymentForm({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  useEffect(() => {
+    console.log('[v0] AddPaymentForm apartments:', apartments)
+    if (!apartments || apartments.length === 0) {
+      console.warn('[v0] No apartments data received in AddPaymentForm')
+    }
+  }, [apartments])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    
+    if (!formData.apartment_id) {
+      setError('Molimo odaberite stan')
+      return
+    }
+    
     setLoading(true)
 
     try {
@@ -47,7 +60,7 @@ export default function AddPaymentForm({
         notes: '',
       })
     } catch (err: any) {
-      setError(err.message || 'Грешка при сачувавању плаћања')
+      setError(err.message || 'Greška pri čuvanju plaćanja')
     } finally {
       setLoading(false)
     }
@@ -57,7 +70,7 @@ export default function AddPaymentForm({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-foreground">Додај плаћање</h2>
+          <h2 className="text-xl font-bold text-foreground">Dodaj plaćanje</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground"
@@ -72,29 +85,41 @@ export default function AddPaymentForm({
           </div>
         )}
 
+        {(!apartments || apartments.length === 0) && (
+          <div className="mb-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded text-yellow-800 dark:text-yellow-200 text-sm">
+            Nema dostupnih stanova. Molimo osvježite stranicu.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Стан
+              Stan
             </label>
             <select
               value={formData.apartment_id}
               onChange={(e) => setFormData({ ...formData, apartment_id: e.target.value })}
               required
-              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
+              disabled={!apartments || apartments.length === 0}
+              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">Одаберите стан</option>
-              {apartments.map((apt) => (
+              <option value="">Odaberite stan</option>
+              {apartments && apartments.map((apt) => (
                 <option key={apt.id} value={apt.id}>
-                  Стан {apt.apartment_number} (Спрат {apt.floor})
+                  Stan {apt.apartment_number} (Sprat {apt.floor})
                 </option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {apartments && apartments.length > 0 
+                ? `${apartments.length} stanova dostupno`
+                : 'Učitavanje stanova...'}
+            </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Износ (BAM)
+              Iznos (BAM)
             </label>
             <input
               type="number"
@@ -109,7 +134,7 @@ export default function AddPaymentForm({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Датум плаћања
+              Datum plaćanja
             </label>
             <input
               type="date"
@@ -123,7 +148,7 @@ export default function AddPaymentForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Месец
+                Mjesec
               </label>
               <input
                 type="number"
@@ -137,7 +162,7 @@ export default function AddPaymentForm({
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
-                Година
+                Godina
               </label>
               <input
                 type="number"
@@ -145,54 +170,54 @@ export default function AddPaymentForm({
                 value={formData.year}
                 onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
                 required
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
+                className="w-full px-3 py-2 border border-input text-foreground rounded-lg bg-background focus:outline-none focus:ring-primary"
               />
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Метод плаћања
+              Metod plaćanja
             </label>
             <select
               value={formData.payment_method}
               onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
             >
-              <option value="transfer">Трансфер</option>
-              <option value="cash">Готовина</option>
-              <option value="check">Чек</option>
-              <option value="other">Друго</option>
+              <option value="transfer">Transfer</option>
+              <option value="cash">Gotovina</option>
+              <option value="check">Ček</option>
+              <option value="other">Drugo</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Напомена
+              Napomena
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
-              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary resize-none"
-              placeholder="Опционална напомена..."
+              className="w-full px-3 py-2 border border-input text-foreground rounded-lg bg-background focus:outline-none focus:ring-primary resize-none"
+              placeholder="Opcionalna napomena..."
             />
           </div>
 
           <div className="flex gap-3 pt-4">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !apartments || apartments.length === 0}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Чувам...' : 'Сачувај плаћање'}
+              {loading ? 'Čuvam...' : 'Sačuvaj plaćanje'}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-input text-foreground rounded-lg hover:bg-muted transition-colors"
             >
-              Отказ
+              Otkaži
             </button>
           </div>
         </form>

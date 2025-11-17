@@ -20,13 +20,19 @@ export default function PaymentsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // [v0] Fetching apartments...
+        console.log('[v0] Fetching apartments...')
         const { data: apartmentsData, error: apartmentsError } = await supabase
           .from('apartments')
           .select('id, apartment_number, floor')
           .order('floor')
           .order('apartment_number')
 
-        if (apartmentsError) throw apartmentsError
+        if (apartmentsError) {
+          console.error('[v0] Error fetching apartments:', apartmentsError)
+          throw apartmentsError
+        }
+        console.log('[v0] Apartments fetched:', apartmentsData?.length || 0)
         setApartments(apartmentsData || [])
 
         const { data: paymentsData, error: paymentsError } = await supabase
@@ -79,9 +85,9 @@ export default function PaymentsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Плаћања</h1>
+          <h1 className="text-3xl font-bold text-foreground">Plaćanja</h1>
           <p className="text-muted-foreground mt-1">
-            Историја плаћања станара
+            Historija plaćanja stanara
           </p>
         </div>
         <button
@@ -89,7 +95,7 @@ export default function PaymentsPage() {
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Додај плаћање
+          Dodaj plaćanje
         </button>
       </div>
 
@@ -103,7 +109,7 @@ export default function PaymentsPage() {
 
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Учитавање...</p>
+          <p className="text-muted-foreground">Učitavanje...</p>
         </div>
       ) : (
         <PaymentsTable payments={payments} />

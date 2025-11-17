@@ -18,8 +18,8 @@ export default function MonthlyCollectionChart({
   year,
 }: MonthlyCollectionChartProps) {
   const [data, setData] = useState<CollectionData[]>([
-    { name: 'Наплаћено', value: 0 },
-    { name: 'Дугови', value: 0 },
+    { name: 'Naplaćeno', value: 0 },
+    { name: 'Dugovi', value: 0 },
   ])
 
   const supabase = createBrowserClient(
@@ -53,8 +53,8 @@ export default function MonthlyCollectionChart({
         const duedAmount = totalExpected - paidAmount
 
         setData([
-          { name: 'Наплаћено', value: paidAmount },
-          { name: 'Дугови', value: duedAmount },
+          { name: 'Naplaćeno', value: paidAmount },
+          { name: 'Dugovi', value: duedAmount },
         ])
       } catch (error) {
         console.error('Error fetching chart data:', error)
@@ -71,13 +71,13 @@ export default function MonthlyCollectionChart({
   return (
     <div className="bg-card border border-border rounded-lg p-6">
       <h2 className="text-lg font-bold text-foreground mb-6">
-        Месечна наплата
+        Mjesečna naplata
       </h2>
 
       <div className="space-y-4">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Наплаћено</span>
+            <span className="text-sm text-muted-foreground">Naplaćeno</span>
             <span className="text-sm font-semibold text-foreground">
               {paidPercent.toFixed(0)}%
             </span>
@@ -95,7 +95,7 @@ export default function MonthlyCollectionChart({
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Дугови</span>
+            <span className="text-sm text-muted-foreground">Dugovi</span>
             <span className="text-sm font-semibold text-foreground">
               {duedPercent.toFixed(0)}%
             </span>
@@ -114,7 +114,7 @@ export default function MonthlyCollectionChart({
 
       <div className="mt-6 pt-6 border-t border-border">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Укупно</span>
+          <span className="text-sm text-muted-foreground">Ukupno</span>
           <span className="text-lg font-bold text-foreground">
             {total.toFixed(2)} BAM
           </span>

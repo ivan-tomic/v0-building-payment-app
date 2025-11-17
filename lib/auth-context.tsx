@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const initializeRef = useRef(false)
+  const fetchingProfileRef = useRef(false)
 
   useEffect(() => {
     if (initializeRef.current) return
@@ -47,24 +48,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
+        console.log('[v0] Initializing auth...')
         const {
           data: { session },
         } = await supabase.auth.getSession()
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          const { data: profileData } = await supabase
+          console.log('[v0] User authenticated:', session.user.email)
+          console.log('[v0] User ID:', session.user.id)
+          
+          const { data: profileData, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single()
+            .maybeSingle()
 
-          if (profileData) {
-            setProfile(profileData as UserProfile)
+          if (error) {
+            console.error('[v0] Error fetching profile:', error)
+            await supabase.auth.signOut()
+            setUser(null)
+            setProfile(null)
+            setLoading(false)
+            window.location.href = '/auth/signin?error=profile_fetch_error'
+            return
           }
+
+          if (!profileData) {
+            console.error('[v0] No profile found for user:', session.user.id)
+            await supabase.auth.signOut()
+            setUser(null)
+            setProfile(null)
+            setLoading(false)
+            window.location.href = '/auth/signin?error=profile_not_found'
+            return
+          }
+
+          console.log('[v0] Profile loaded:', profileData.role)
+          setProfile(profileData as UserProfile)
         }
       } catch (error) {
-        console.error('Auth initialization error:', error)
+        console.error('[v0] Auth initialization error:', error)
       } finally {
         setLoading(false)
       }
@@ -75,27 +99,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        const { data: profileData } = await supabase
+      console.log('[v0] Auth state changed:', event)
+      
+      // If user signed out, clear state
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setProfile(null)
+        return
+      }
+      
+      // If user signed in and we don't have a profile yet, fetch it
+      if (session?.user && !profile && !fetchingProfileRef.current) {
+        fetchingProfileRef.current = true
+        console.log('[v0] Loading profile for user:', session.user.id)
+        
+        const { data: profileData, error } = await supabase
           .from('users')
           .select('*')
           .eq('id', session.user.id)
-          .single()
+          .maybeSingle()
+
+        fetchingProfileRef.current = false
+
+        if (error) {
+          console.error('[v0] Error fetching profile on auth change:', error)
+          return
+        }
 
         if (profileData) {
+          console.log('[v0] Profile set:', profileData.role)
           setProfile(profileData as UserProfile)
         }
-      } else {
-        setProfile(null)
       }
+      
+      setUser(session?.user ?? null)
     })
 
     return () => {
       subscription?.unsubscribe()
     }
-  }, [])
+  }, [profile])
 
   const signOut = async () => {
     const supabase = getSupabaseClient()

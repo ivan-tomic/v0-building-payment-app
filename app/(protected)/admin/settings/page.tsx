@@ -7,16 +7,16 @@ export default function SettingsPage() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold text-foreground">Подешавања</h1>
+      <h1 className="text-3xl font-bold text-foreground">Podešavanja</h1>
       <p className="text-muted-foreground mt-1">
-        Администраторски налог
+        Administratorski nalog
       </p>
 
       <div className="mt-8 bg-card border border-border rounded-lg p-6 max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Пуно име
+              Puno ime
             </label>
             <p className="text-foreground">{profile?.full_name}</p>
           </div>
@@ -28,7 +28,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Улога
+              Uloga
             </label>
             <p className="text-foreground capitalize">{profile?.role}</p>
           </div>
