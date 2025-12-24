@@ -1,124 +1,80 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
-interface CollectionData {
-  name: string
-  value: number
+interface MonthlyData {
+  month: string
+  amount: number
 }
 
-interface MonthlyCollectionChartProps {
-  month: number
-  year: number
-}
-
-export default function MonthlyCollectionChart({
-  month,
-  year,
-}: MonthlyCollectionChartProps) {
-  const [data, setData] = useState<CollectionData[]>([
-    { name: 'Naplaćeno', value: 0 },
-    { name: 'Dugovi', value: 0 },
-  ])
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+export default function MonthlyCollectionChart() {
+  const [data, setData] = useState<MonthlyData[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: apartments } = await supabase
-          .from('apartments')
-          .select('id, monthly_fee')
+        const currentYear = new Date().getFullYear()
+        const res = await fetch(`/api/payments?year=${currentYear}`)
+        const payments = await res.json()
 
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('apartment_id')
-          .eq('month', month)
-          .eq('year', year)
+        // Group payments by month
+        const monthlyTotals: Record<number, number> = {}
+        
+        if (Array.isArray(payments)) {
+          payments.forEach((payment: any) => {
+            const month = payment.month
+            if (!monthlyTotals[month]) {
+              monthlyTotals[month] = 0
+            }
+            monthlyTotals[month] += parseFloat(payment.amount) || 0
+          })
+        }
 
-        const paidIds = new Set(payments?.map((p) => p.apartment_id) || [])
-        const totalExpected = apartments?.reduce(
-          (sum, apt) => sum + (apt.monthly_fee || 0),
-          0
-        ) || 0
+        // Create data for all 12 months
+        const chartData = Array.from({ length: 12 }, (_, i) => ({
+          month: new Date(2000, i).toLocaleString('bs', { month: 'short' }),
+          amount: monthlyTotals[i + 1] || 0,
+        }))
 
-        const paidAmount = apartments
-          ?.filter((apt) => paidIds.has(apt.id))
-          .reduce((sum, apt) => sum + (apt.monthly_fee || 0), 0) || 0
-
-        const duedAmount = totalExpected - paidAmount
-
-        setData([
-          { name: 'Naplaćeno', value: paidAmount },
-          { name: 'Dugovi', value: duedAmount },
-        ])
+        setData(chartData)
       } catch (error) {
         console.error('Error fetching chart data:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchData()
-  }, [month, year, supabase])
+  }, [])
 
-  const total = data[0].value + data[1].value
-  const paidPercent = total > 0 ? (data[0].value / total) * 100 : 0
-  const duedPercent = total > 0 ? (data[1].value / total) * 100 : 0
+  if (loading) {
+    return (
+      <div className="bg-card rounded-lg border p-6">
+        <p className="text-muted-foreground">Učitavanje grafikona...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <h2 className="text-lg font-bold text-foreground mb-6">
-        Mjesečna naplata
+    <div className="bg-card rounded-lg border p-6">
+      <h2 className="text-lg font-semibold text-foreground mb-4">
+        Mjesečna naplata ({new Date().getFullYear()})
       </h2>
-
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Naplaćeno</span>
-            <span className="text-sm font-semibold text-foreground">
-              {paidPercent.toFixed(0)}%
-            </span>
-          </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-green-500 transition-all"
-              style={{ width: `${paidPercent}%` }}
+      
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis />
+            <Tooltip 
+              formatter={(value: number) => [`${value.toFixed(2)} BAM`, 'Naplaćeno']}
             />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {data[0].value.toFixed(2)} BAM
-          </p>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-muted-foreground">Dugovi</span>
-            <span className="text-sm font-semibold text-foreground">
-              {duedPercent.toFixed(0)}%
-            </span>
-          </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-red-500 transition-all"
-              style={{ width: `${duedPercent}%` }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {data[1].value.toFixed(2)} BAM
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-6 pt-6 border-t border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Ukupno</span>
-          <span className="text-lg font-bold text-foreground">
-            {total.toFixed(2)} BAM
-          </span>
-        </div>
+            <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )

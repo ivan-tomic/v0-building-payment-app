@@ -3,23 +3,36 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 
-interface AddExpenseFormProps {
-  onClose: () => void
-  onSubmit: (data: any) => Promise<void>
+interface Apartment {
+  id: number
+  apartmentNumber: number
+  buildingNumber: number
+  floor: number
 }
 
-export default function AddExpenseForm({
+interface AddPaymentFormProps {
+  apartments: Apartment[]
+  onClose: () => void
+  onPaymentAdded: () => void
+  defaultMonth?: number
+  defaultYear?: number
+}
+
+export default function AddPaymentForm({
+  apartments,
   onClose,
-  onSubmit,
-}: AddExpenseFormProps) {
+  onPaymentAdded,
+  defaultMonth,
+  defaultYear,
+}: AddPaymentFormProps) {
   const [formData, setFormData] = useState({
-    title: '',
+    apartment_id: '',
     amount: '',
-    category: 'maintenance',
-    description: '',
-    expense_date: new Date().toISOString().split('T')[0],
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear(),
+    payment_date: new Date().toISOString().split('T')[0],
+    month: defaultMonth || new Date().getMonth() + 1,
+    year: defaultYear || new Date().getFullYear(),
+    payment_method: 'transfer',
+    notes: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -27,24 +40,38 @@ export default function AddExpenseForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!formData.apartment_id) {
+      setError('Molimo odaberite stan')
+      return
+    }
+
     setLoading(true)
 
     try {
-      await onSubmit({
-        ...formData,
-        amount: parseFloat(formData.amount),
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apartment_id: parseInt(formData.apartment_id),
+          amount: parseFloat(formData.amount),
+          payment_date: formData.payment_date,
+          month: formData.month,
+          year: formData.year,
+          payment_method: formData.payment_method,
+          notes: formData.notes,
+        }),
       })
-      setFormData({
-        title: '',
-        amount: '',
-        category: 'maintenance',
-        description: '',
-        expense_date: new Date().toISOString().split('T')[0],
-        month: new Date().getMonth() + 1,
-        year: new Date().getFullYear(),
-      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Greška pri čuvanju plaćanja')
+      }
+
+      onPaymentAdded()
+      onClose()
     } catch (err: any) {
-      setError(err.message || 'Greška pri sačuvavanju troška')
+      setError(err.message || 'Greška pri čuvanju plaćanja')
     } finally {
       setLoading(false)
     }
@@ -54,9 +81,10 @@ export default function AddExpenseForm({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-foreground">Dodaj trošak</h2>
+          <h2 className="text-xl font-bold text-foreground">Dodaj plaćanje</h2>
           <button
             onClick={onClose}
+            type="button"
             className="text-muted-foreground hover:text-foreground"
           >
             <X className="w-5 h-5" />
@@ -72,16 +100,21 @@ export default function AddExpenseForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Naziv troška
+              Stan
             </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            <select
+              value={formData.apartment_id}
+              onChange={(e) => setFormData({ ...formData, apartment_id: e.target.value })}
               required
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
-              placeholder="npr. Popravka krova"
-            />
+            >
+              <option value="">Odaberite stan</option>
+              {apartments.map((apt) => (
+                <option key={apt.id} value={apt.id}>
+                  Stan {apt.apartmentNumber}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -101,29 +134,12 @@ export default function AddExpenseForm({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Kategorija
-            </label>
-            <select
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
-            >
-              <option value="repair">Popravke</option>
-              <option value="maintenance">Održavanje</option>
-              <option value="utilities">Komunalno</option>
-              <option value="cleaning">Čišćenje</option>
-              <option value="other">Drugo</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Datum troška
+              Datum plaćanja
             </label>
             <input
               type="date"
-              value={formData.expense_date}
-              onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
+              value={formData.payment_date}
+              onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
               required
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
             />
@@ -134,15 +150,17 @@ export default function AddExpenseForm({
               <label className="block text-sm font-medium text-foreground mb-1">
                 Mjesec
               </label>
-              <input
-                type="number"
-                min="1"
-                max="12"
+              <select
                 value={formData.month}
                 onChange={(e) => setFormData({ ...formData, month: parseInt(e.target.value) })}
-                required
                 className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
-              />
+              >
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {new Date(2000, i).toLocaleString('bs', { month: 'long' })}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
@@ -161,14 +179,30 @@ export default function AddExpenseForm({
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">
-              Opis
+              Metod plaćanja
+            </label>
+            <select
+              value={formData.payment_method}
+              onChange={(e) => setFormData({ ...formData, payment_method: e.target.value })}
+              className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary"
+            >
+              <option value="transfer">Transfer</option>
+              <option value="cash">Gotovina</option>
+              <option value="check">Ček</option>
+              <option value="other">Drugo</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Napomena
             </label>
             <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={3}
               className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground focus:outline-none focus:ring-primary resize-none"
-              placeholder="Detalji troška..."
+              placeholder="Opcionalna napomena..."
             />
           </div>
 
@@ -178,14 +212,14 @@ export default function AddExpenseForm({
               disabled={loading}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              {loading ? 'Čuvam...' : 'Sačuvaj trošak'}
+              {loading ? 'Čuvam...' : 'Sačuvaj plaćanje'}
             </button>
             <button
               type="button"
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-input text-foreground rounded-lg hover:bg-muted transition-colors"
             >
-              Otkaz
+              Otkaži
             </button>
           </div>
         </form>

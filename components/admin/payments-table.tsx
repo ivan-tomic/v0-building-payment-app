@@ -1,4 +1,4 @@
-import { formatDate } from '@/lib/utils'
+import { formatDate, formatPaymentMethod } from '@/lib/utils'
 
 interface PaymentsTableProps {
   payments: any[]
@@ -39,19 +39,19 @@ export default function PaymentsTable({ payments }: PaymentsTableProps) {
               payments.map((payment) => (
                 <tr key={payment.id} className="hover:bg-muted/50">
                   <td className="px-6 py-4 text-sm text-foreground">
-                    Stan {payment.apartments?.apartment_number}
+                    Stan {payment.apartmentNumber || '—'}
                   </td>
                   <td className="px-6 py-4 text-sm text-foreground">
                     {payment.month}/{payment.year}
                   </td>
                   <td className="px-6 py-4 text-sm font-semibold text-foreground">
-                    {payment.amount.toFixed(2)} BAM
+                    {Number(payment.amount).toFixed(2)} BAM
                   </td>
                   <td className="px-6 py-4 text-sm text-foreground">
-                    {formatDate(payment.payment_date)}
+                    {payment.paymentDate ? formatDate(payment.paymentDate) : '—'}
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {payment.payment_method || '—'}
+                    {formatPaymentMethod(payment.paymentMethod)}
                   </td>
                 </tr>
               ))

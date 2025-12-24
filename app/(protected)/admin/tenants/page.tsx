@@ -1,113 +1,126 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import TenantsList from '@/components/admin/tenants-list'
 import InvitationGenerator from '@/components/admin/invitation-generator'
 
+
 interface Apartment {
   id: number
-  apartment_number: number
+  buildingNumber: number
+  apartmentNumber: number
   floor: number
-  size_sqm: number
-}
-
-interface User {
-  id: string
-  full_name: string
-  email: string
+  sizeSqm?: number
 }
 
 interface TenantData {
-  apartment: Apartment
-  user: User | null
+  apartment: {
+    id: number
+    apartment_number: number
+    floor: number
+    size_sqm: number
+  }
+  user: {
+    id: string
+    full_name: string
+    email: string
+  } | null
 }
 
-export default function TenantsPage() {
+export default function AdminTenantsPage() {
   const [tenants, setTenants] = useState<TenantData[]>([])
+  const [apartments, setApartments] = useState<Apartment[]>([])
   const [loading, setLoading] = useState(true)
-  const [showInvitation, setShowInvitation] = useState(false)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const fetchTenants = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true)
-      const { data: apartments, error } = await supabase
-        .from('apartments')
-        .select('*')
-        .order('floor')
-        .order('apartment_number')
+      const [apartmentsWithTenantsRes, apartmentsRes] = await Promise.all([
+        fetch('/api/apartments?withTenants=true'),
+        fetch('/api/apartments')
+      ])
+      
+      const apartmentsWithTenants: any[] = await apartmentsWithTenantsRes.json()
+      const apartmentsData: Apartment[] = await apartmentsRes.json()
+      
+      setApartments(Array.isArray(apartmentsData) ? apartmentsData : [])
 
-      if (error) throw error
-
-      // Get users for each apartment
-      const tenantsData = await Promise.all(
-        apartments.map(async (apt) => {
-          const { data: user } = await supabase
-            .from('users')
-            .select('id, full_name, email')
-            .eq('apartment_id', apt.id)
-            .single()
-
-          return { apartment: apt, user }
+      // Transform data to match TenantsList component structure
+      // Group by apartment (one apartment can have multiple rows if multiple tenants, but we only want one)
+      const apartmentMap = new Map<number, TenantData>()
+      
+      if (Array.isArray(apartmentsWithTenants)) {
+        apartmentsWithTenants.forEach((item: any) => {
+          if (!apartmentMap.has(item.id)) {
+            apartmentMap.set(item.id, {
+              apartment: {
+                id: item.id,
+                apartment_number: item.apartmentNumber,
+                floor: item.floor,
+                size_sqm: item.sizeSqm ? Number(item.sizeSqm) : 0
+              },
+              user: item.tenantId ? {
+                id: String(item.tenantId),
+                full_name: item.tenantName || '',
+                email: item.tenantEmail || ''
+              } : null
+            })
+          }
         })
-      )
+      }
 
-      setTenants(tenantsData)
+      // Also include apartments without tenants
+      if (Array.isArray(apartmentsData)) {
+        apartmentsData.forEach((apt) => {
+          if (!apartmentMap.has(apt.id)) {
+            apartmentMap.set(apt.id, {
+              apartment: {
+                id: apt.id,
+                apartment_number: apt.apartmentNumber,
+                floor: apt.floor,
+                size_sqm: apt.sizeSqm ? Number(apt.sizeSqm) : 0
+              },
+              user: null
+            })
+          }
+        })
+      }
+
+      const transformedTenants = Array.from(apartmentMap.values())
+      // Sort by apartment number
+      transformedTenants.sort((a, b) => a.apartment.apartment_number - b.apartment.apartment_number)
+      
+      setTenants(transformedTenants)
     } catch (error) {
-      console.error('Error fetching tenants:', error)
+      console.error('Error fetching data:', error)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchTenants()
-  }, [supabase])
+    fetchData()
+  }, [])
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Stanari</h1>
-          <p className="text-muted-foreground mt-1">Upravljanje stanarima i generisanje kodova poziva</p>
-        </div>
-        <button
-          onClick={() => setShowInvitation(!showInvitation)}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-        >
-          {showInvitation ? 'Zatvori' : 'Generiši kod'}
-        </button>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Stanari</h1>
+        <p className="text-muted-foreground">Upravljanje stanarima i pozivnicama</p>
       </div>
 
-      {showInvitation && (
-        <InvitationGenerator
-          onClose={() => setShowInvitation(false)}
-          onGenerated={fetchTenants}
-        />
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          {loading ? (
+            <p className="text-muted-foreground">Učitavanje...</p>
+          ) : (
+            <TenantsList tenants={tenants} />
+          )}
+        </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Učitavanje...</p>
+        <div>
+          <InvitationGenerator apartments={apartments} />
         </div>
-      ) : tenants.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">Nema stanova u bazi podataka.</p>
-          <a
-            href="/seed-apartments"
-            className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-          >
-            Dodaj stanove
-          </a>
-        </div>
-      ) : (
-        <TenantsList tenants={tenants} />
-      )}
+      </div>
     </div>
   )
 }

@@ -1,44 +1,32 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import { useAuth } from '@/lib/auth-context'
 import TenantInfoCard from '@/components/tenant/tenant-info-card'
 import CurrentBalance from '@/components/tenant/current-balance'
 
-interface ApartmentInfo {
-  apartment_number: number
+interface Apartment {
+  id: number
+  buildingNumber: number
+  apartmentNumber: number
   floor: number
-  size_sqm: number
-  monthly_fee: number
+  monthlyFee: string
 }
 
 export default function TenantDashboard() {
-  const { profile } = useAuth()
-  const [apartment, setApartment] = useState<ApartmentInfo | null>(null)
+  const [apartment, setApartment] = useState<Apartment | null>(null)
   const [loading, setLoading] = useState(true)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const { profile } = useAuth()
 
   useEffect(() => {
-    const fetchApartmentInfo = async () => {
-      if (!profile?.apartment_id) {
-        setLoading(false)
-        return
-      }
-
+    const fetchApartment = async () => {
       try {
-        const { data, error } = await supabase
-          .from('apartments')
-          .select('*')
-          .eq('id', profile.apartment_id)
-          .single()
-
-        if (error) throw error
-        setApartment(data)
+        const res = await fetch('/api/apartments')
+        const data = await res.json()
+        
+        if (Array.isArray(data) && data.length > 0) {
+          setApartment(data[0])
+        }
       } catch (error) {
         console.error('Error fetching apartment:', error)
       } finally {
@@ -46,38 +34,31 @@ export default function TenantDashboard() {
       }
     }
 
-    fetchApartmentInfo()
-  }, [profile?.apartment_id, supabase])
+    fetchApartment()
+  }, [])
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <p className="text-muted-foreground">Учитавање...</p>
+      <div className="p-8">
+        <p className="text-muted-foreground">Učitavanje...</p>
       </div>
     )
   }
 
   return (
-    <div>
+    <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          Добредошли, {profile?.full_name}!
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          Dobrodošli, {profile?.name}!
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Преглед вашег стана и финансијског стања
+        <p className="text-muted-foreground">
+          Pregled vašeg stana i finansijskog stanja
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {apartment && (
-          <>
-            <TenantInfoCard apartment={apartment} />
-            <CurrentBalance
-              apartmentId={profile?.apartment_id || 0}
-              monthlyFee={apartment.monthly_fee}
-            />
-          </>
-        )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <TenantInfoCard apartment={apartment} profile={profile} />
+        <CurrentBalance apartmentId={apartment?.id} />
       </div>
     </div>
   )

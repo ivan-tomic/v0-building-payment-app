@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface FloorData {
-  floor: number
+  floor: string
   paid: number
   unpaid: number
-  percentage: number
 }
 
 interface FloorCollectionChartProps {
@@ -15,93 +14,87 @@ interface FloorCollectionChartProps {
   year: number
 }
 
-export default function FloorCollectionChart({
-  month,
-  year,
-}: FloorCollectionChartProps) {
-  const [floors, setFloors] = useState<FloorData[]>([])
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+export default function FloorCollectionChart({ month, year }: FloorCollectionChartProps) {
+  const [data, setData] = useState<FloorData[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true)
       try {
-        const { data: apartments } = await supabase
-          .from('apartments')
-          .select('*')
-          .order('floor')
+        const [apartmentsRes, paymentsRes] = await Promise.all([
+          fetch('/api/apartments'),
+          fetch(`/api/payments?month=${month}&year=${year}`),
+        ])
 
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('apartment_id')
-          .eq('month', month)
-          .eq('year', year)
+        const apartments = await apartmentsRes.json()
+        const payments = await paymentsRes.json()
 
-        const paidIds = new Set(payments?.map((p) => p.apartment_id) || [])
+        const paidApartmentIds = new Set(
+          Array.isArray(payments) ? payments.map((p: any) => p.apartmentId) : []
+        )
 
-        const floorMap: Record<number, FloorData> = {}
+        // Group by floor
+        const floorStats: Record<number, { paid: number; unpaid: number }> = {}
 
-        apartments?.forEach((apt) => {
-          if (!floorMap[apt.floor]) {
-            floorMap[apt.floor] = { floor: apt.floor, paid: 0, unpaid: 0, percentage: 0 }
-          }
+        if (Array.isArray(apartments)) {
+          apartments.forEach((apt: any) => {
+            if (!floorStats[apt.floor]) {
+              floorStats[apt.floor] = { paid: 0, unpaid: 0 }
+            }
+            if (paidApartmentIds.has(apt.id)) {
+              floorStats[apt.floor].paid++
+            } else {
+              floorStats[apt.floor].unpaid++
+            }
+          })
+        }
 
-          if (paidIds.has(apt.id)) {
-            floorMap[apt.floor].paid += 1
-          } else {
-            floorMap[apt.floor].unpaid += 1
-          }
-        })
-
-        const floorData = Object.values(floorMap)
-          .sort((a, b) => a.floor - b.floor)
-          .map((f) => ({
-            ...f,
-            percentage: f.paid + f.unpaid > 0
-              ? Math.round((f.paid / (f.paid + f.unpaid)) * 100)
-              : 0,
+        // Convert to chart data
+        const chartData = Object.entries(floorStats)
+          .sort(([a], [b]) => parseInt(a) - parseInt(b))
+          .map(([floor, stats]) => ({
+            floor: `Sprat ${floor}`,
+            paid: stats.paid,
+            unpaid: stats.unpaid,
           }))
 
-        setFloors(floorData)
+        setData(chartData)
       } catch (error) {
-        console.error('Error fetching floor data:', error)
+        console.error('Error fetching chart data:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchData()
-  }, [month, year, supabase])
+  }, [month, year])
+
+  if (loading) {
+    return (
+      <div className="bg-card rounded-lg border p-6">
+        <p className="text-muted-foreground">Učitavanje grafikona...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <h2 className="text-lg font-bold text-foreground mb-6">
+    <div className="bg-card rounded-lg border p-6">
+      <h2 className="text-lg font-semibold text-foreground mb-4">
         Naplata po spratovima
       </h2>
-
-      <div className="space-y-6">
-        {floors.map((floor) => (
-          <div key={floor.floor}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-foreground">
-                Sprat {floor.floor}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {floor.paid}/{floor.paid + floor.unpaid}
-              </span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all"
-                style={{ width: `${floor.percentage}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {floor.percentage}% plaćeno
-            </p>
-          </div>
-        ))}
+      
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="floor" />
+            <YAxis />
+            <Tooltip />
+            <Bar dataKey="paid" name="Plaćeno" fill="#22c55e" stackId="a" />
+            <Bar dataKey="unpaid" name="Neplaćeno" fill="#ef4444" stackId="a" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )

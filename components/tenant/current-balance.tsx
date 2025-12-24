@@ -1,114 +1,101 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { AlertCircle, CheckCircle } from 'lucide-react'
+import { CreditCard, CheckCircle, AlertCircle } from 'lucide-react'
 
 interface CurrentBalanceProps {
-  apartmentId: number
-  monthlyFee: number
+  apartmentId: number | undefined
 }
 
-export default function CurrentBalance({
-  apartmentId,
-  monthlyFee,
-}: CurrentBalanceProps) {
-  const [balance, setBalance] = useState(0)
-  const [paidThisMonth, setPaidThisMonth] = useState(false)
+export default function CurrentBalance({ apartmentId }: CurrentBalanceProps) {
+  const [currentMonthPaid, setCurrentMonthPaid] = useState(false)
+  const [lastPayment, setLastPayment] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   useEffect(() => {
-    const fetchBalance = async () => {
+    const fetchPaymentStatus = async () => {
+      if (!apartmentId) {
+        setLoading(false)
+        return
+      }
+
       try {
         const currentDate = new Date()
-        const month = currentDate.getMonth() + 1
-        const year = currentDate.getFullYear()
+        const res = await fetch(
+          `/api/payments?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`
+        )
+        const payments = await res.json()
 
-        // Check if paid this month
-        const { data: paymentData } = await supabase
-          .from('payments')
-          .select('*')
-          .eq('apartment_id', apartmentId)
-          .eq('month', month)
-          .eq('year', year)
-          .single()
-
-        if (paymentData) {
-          setPaidThisMonth(true)
-          setBalance(0)
+        if (Array.isArray(payments) && payments.length > 0) {
+          setCurrentMonthPaid(true)
+          setLastPayment(payments[0])
         } else {
-          // Calculate how many months are unpaid
-          const { data: allPayments } = await supabase
-            .from('payments')
-            .select('month, year')
-            .eq('apartment_id', apartmentId)
-            .order('year')
-            .order('month')
-
-          // Simple calculation: assume current month is unpaid
-          setBalance(monthlyFee)
+          setCurrentMonthPaid(false)
         }
       } catch (error) {
-        console.error('Error fetching balance:', error)
+        console.error('Error fetching payment status:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchBalance()
-  }, [apartmentId, monthlyFee, supabase])
+    fetchPaymentStatus()
+  }, [apartmentId])
+
+  const currentMonth = new Date().toLocaleString('bs', { month: 'long' })
+  const currentYear = new Date().getFullYear()
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-lg p-6">
-        <p className="text-muted-foreground">Учитавање...</p>
+      <div className="bg-card rounded-lg border p-6">
+        <p className="text-muted-foreground">Učitavanje...</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <h2 className="text-xl font-bold text-foreground mb-6">
-        Текуће стање
-      </h2>
+    <div className="bg-card rounded-lg border p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <CreditCard className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-semibold text-foreground">
+          Status uplate
+        </h2>
+      </div>
 
-      <div className="space-y-6">
-        {paidThisMonth ? (
-          <div className="flex items-center gap-4 p-4 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-300 dark:border-green-700">
-            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-green-900 dark:text-green-100">
-                Плаћено овај месец
-              </p>
-              <p className="text-sm text-green-800 dark:text-green-200">
-                Ваша обавеза је извршена
-              </p>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between py-3 border-b">
+          <span className="text-muted-foreground">Period:</span>
+          <span className="font-medium capitalize">{currentMonth} {currentYear}</span>
+        </div>
+
+        <div className="flex items-center justify-between py-3">
+          <span className="text-muted-foreground">Status:</span>
+          {currentMonthPaid ? (
+            <div className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">Plaćeno</span>
             </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-4 p-4 bg-amber-100 dark:bg-amber-900/30 rounded-lg border border-amber-300 dark:border-amber-700">
-            <AlertCircle className="w-8 h-8 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <div>
-              <p className="font-semibold text-amber-900 dark:text-amber-100">
-                Стање: {balance.toFixed(2)} BAM
-              </p>
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Молимо благајте плаћање
-              </p>
+          ) : (
+            <div className="flex items-center gap-2 text-amber-600">
+              <AlertCircle className="h-5 w-5" />
+              <span className="font-medium">Nije plaćeno</span>
+            </div>
+          )}
+        </div>
+
+        {lastPayment && (
+          <div className="pt-4 border-t">
+            <p className="text-sm text-muted-foreground mb-2">Posljednja uplata:</p>
+            <div className="flex justify-between items-center">
+              <span className="text-sm">
+                {new Date(lastPayment.paymentDate).toLocaleDateString('bs')}
+              </span>
+              <span className="font-medium">
+                {parseFloat(lastPayment.amount).toFixed(2)} BAM
+              </span>
             </div>
           </div>
         )}
-
-        <div className="pt-4 border-t border-border">
-          <p className="text-sm text-muted-foreground mb-2">
-            За детаље о плаћањима, погледајте картицу "Плаћања"
-          </p>
-        </div>
       </div>
     </div>
   )

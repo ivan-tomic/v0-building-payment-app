@@ -1,16 +1,11 @@
 'use client'
 
-import { AuthProvider } from '@/lib/auth-context'
-import { ProtectedRoute } from '@/lib/protected-route'
-
+// This layout just provides a wrapper for protected routes
+// Actual protection is handled in admin/tenant layouts
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  return (
-    <AuthProvider>
-      <ProtectedRoute>{children}</ProtectedRoute>
-    </AuthProvider>
-  )
+  return <>{children}</>
 }

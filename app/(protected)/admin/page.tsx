@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import { useAuth } from '@/lib/auth-context'
 import StatsCard from '@/components/admin/stats-card'
 import { DollarSign, Users, AlertCircle, Home } from 'lucide-react'
@@ -23,50 +22,41 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const { profile } = useAuth()
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Get total apartments
-        const { count: apartmentCount } = await supabase
-          .from('apartments')
-          .select('*', { count: 'exact', head: true })
+        // Fetch apartments
+        const apartmentsRes = await fetch('/api/apartments')
+        const apartments = await apartmentsRes.json()
 
-        // Get total tenants
-        const { count: tenantCount } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('role', 'tenant')
+        // Fetch tenants
+        const usersRes = await fetch('/api/users?role=tenant')
+        const tenants = await usersRes.json()
 
-        // Get total collected payments for current month
+        // Fetch payments for current month
         const currentDate = new Date()
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('amount')
-          .eq('month', currentDate.getMonth() + 1)
-          .eq('year', currentDate.getFullYear())
+        const paymentsRes = await fetch(
+          `/api/payments?month=${currentDate.getMonth() + 1}&year=${currentDate.getFullYear()}`
+        )
+        const payments = await paymentsRes.json()
 
-        const totalCollected = payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0
+        const totalCollected = Array.isArray(payments)
+          ? payments.reduce((sum: number, p: any) => sum + (parseFloat(p.amount) || 0), 0)
+          : 0
 
-        // Get delinquent count (apartments without payment this month)
-        const { count: delinquentCount } = await supabase
-          .from('apartments')
-          .select('id', { count: 'exact', head: true })
-          .not(
-            'id',
-            'in',
-            `(${payments?.map(p => p.apartment_id).join(',') || 'null'})`
-          )
+        // Calculate delinquent (apartments without payment this month)
+        const paidApartmentIds = Array.isArray(payments)
+          ? payments.map((p: any) => p.apartmentId)
+          : []
+        const delinquentCount = Array.isArray(apartments)
+          ? apartments.filter((a: any) => !paidApartmentIds.includes(a.id)).length
+          : 0
 
         setStats({
-          totalApartments: apartmentCount || 0,
-          totalTenants: tenantCount || 0,
-          delinquentCount: delinquentCount || 0,
-          totalCollected: totalCollected,
+          totalApartments: Array.isArray(apartments) ? apartments.length : 0,
+          totalTenants: Array.isArray(tenants) ? tenants.length : 0,
+          delinquentCount,
+          totalCollected,
         })
       } catch (error) {
         console.error('Error fetching stats:', error)
@@ -76,13 +66,13 @@ export default function AdminDashboard() {
     }
 
     fetchStats()
-  }, [supabase])
+  }, [])
 
   return (
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-foreground mb-2">
-          Dobrodošli nazad, {profile?.full_name}!
+          Dobrodošli nazad, {profile?.name}!
         </h1>
         <p className="text-muted-foreground">
           Pregled stanova i finansijskog stanja

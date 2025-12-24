@@ -1,126 +1,111 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { AlertTriangle } from 'lucide-react'
-
-interface DelinquentData {
-  apartment_number: number
-  floor: number
-  tenant_name: string | null
-  tenant_email: string | null
-}
+import { AlertCircle } from 'lucide-react'
 
 interface DelinquentTenantsProps {
   month: number
   year: number
 }
 
-export default function DelinquentTenants({
-  month,
-  year,
-}: DelinquentTenantsProps) {
-  const [delinquents, setDelinquents] = useState<DelinquentData[]>([])
+interface DelinquentApartment {
+  id: number
+  apartmentNumber: number
+  floor: number
+  tenantName: string | null
+}
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+export default function DelinquentTenants({ month, year }: DelinquentTenantsProps) {
+  const [delinquents, setDelinquents] = useState<DelinquentApartment[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchDelinquents = async () => {
+      setLoading(true)
       try {
-        const { data: apartments } = await supabase
-          .from('apartments')
-          .select('id, apartment_number, floor')
+        const [apartmentsRes, paymentsRes] = await Promise.all([
+          fetch('/api/apartments?withTenants=true'),
+          fetch(`/api/payments?month=${month}&year=${year}`),
+        ])
 
-        const { data: payments } = await supabase
-          .from('payments')
-          .select('apartment_id')
-          .eq('month', month)
-          .eq('year', year)
+        const apartments = await apartmentsRes.json()
+        const payments = await paymentsRes.json()
 
-        const paidIds = new Set(payments?.map((p) => p.apartment_id) || [])
-        const unpaidApts = apartments?.filter((apt) => !paidIds.has(apt.id)) || []
+        const paidApartmentIds = Array.isArray(payments)
+          ? payments.map((p: any) => p.apartmentId)
+          : []
 
-        const delinquentData = await Promise.all(
-          unpaidApts.map(async (apt) => {
-            const { data: user } = await supabase
-              .from('users')
-              .select('full_name, email')
-              .eq('apartment_id', apt.id)
-              .single()
+        const delinquentList = Array.isArray(apartments)
+          ? apartments
+              .filter((apt: any) => !paidApartmentIds.includes(apt.id))
+              .map((apt: any) => ({
+                id: apt.id,
+                apartmentNumber: apt.apartmentNumber,
+                floor: apt.floor,
+                tenantName: apt.tenantName || null,
+              }))
+          : []
 
-            return {
-              apartment_number: apt.apartment_number,
-              floor: apt.floor,
-              tenant_name: user?.full_name || 'Није активирано',
-              tenant_email: user?.email || '—',
-            }
-          })
-        )
-
-        setDelinquents(delinquentData)
+        setDelinquents(delinquentList)
       } catch (error) {
-        console.error('Error fetching delinquent data:', error)
+        console.error('Error fetching delinquents:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
-    fetchData()
-  }, [month, year, supabase])
+    fetchDelinquents()
+  }, [month, year])
+
+  const getMonthName = (m: number) => {
+    return new Date(2000, m - 1).toLocaleString('bs', { month: 'long' })
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-card rounded-lg border p-6">
+        <p className="text-muted-foreground">Učitavanje...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <AlertTriangle className="w-5 h-5 text-red-500" />
-        <h2 className="text-lg font-bold text-foreground">Dugovi</h2>
-        <span className="ml-auto text-sm text-muted-foreground">
-          {delinquents.length} stanara
-        </span>
+    <div className="bg-card rounded-lg border p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <AlertCircle className="h-5 w-5 text-red-500" />
+        <h2 className="text-lg font-semibold text-foreground">
+          Neplaćeno za {getMonthName(month)} {year}
+        </h2>
       </div>
 
       {delinquents.length === 0 ? (
-        <p className="text-center py-8 text-muted-foreground">
-          Svi stanari su platili!
-        </p>
+        <div className="text-center py-8">
+          <p className="text-green-600 font-medium">Svi stanovi su platili!</p>
+        </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted border-b border-border">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Stan
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Sprat
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Stanar
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                  Email
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {delinquents.map((d, idx) => (
-                <tr key={idx} className="hover:bg-muted/50">
-                  <td className="px-6 py-4 text-sm font-semibold text-foreground">
-                    {d.apartment_number}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-foreground">
-                    {d.floor}.
-                  </td>
-                  <td className="px-6 py-4 text-sm text-foreground">
-                    {d.tenant_name}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {d.tenant_email}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground mb-4">
+            {delinquents.length} {delinquents.length === 1 ? 'stan' : 'stanova'} nije platio
+          </p>
+          
+          <div className="divide-y divide-border">
+            {delinquents.map((apt) => (
+              <div key={apt.id} className="py-3 flex justify-between items-center">
+                <div>
+                  <p className="font-medium text-foreground">
+                    Stan {apt.apartmentNumber}
+                  </p>
+                </div>
+                <div className="text-right">
+                  {apt.tenantName ? (
+                    <p className="text-sm text-muted-foreground">{apt.tenantName}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Nije registrovan</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

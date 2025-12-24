@@ -1,36 +1,48 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextRequest, NextResponse } from 'next/server'
+import { withAuth } from 'next-auth/middleware'
+import { NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  const response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+export default withAuth(
+  function middleware(request) {
+    const token = request.nextauth.token
+    const path = request.nextUrl.pathname
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options)
-          })
-        },
-      },
+    // Admin routes protection
+    if (path.startsWith('/admin') && token?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/unauthorized', request.url))
     }
-  )
 
-  // Refresh auth session
-  await supabase.auth.getSession()
+    // Tenant routes protection
+    if (path.startsWith('/tenant') && token?.role !== 'tenant' && token?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/unauthorized', request.url))
+    }
 
-  return response
-}
+    return NextResponse.next()
+  },
+  {
+    callbacks: {
+      authorized: ({ token, req }) => {
+        const path = req.nextUrl.pathname
+
+        // Public routes that don't require auth
+        const publicRoutes = ['/auth/signin', '/auth/signup', '/setup', '/', '/unauthorized']
+        if (publicRoutes.some((route) => path.startsWith(route))) {
+          return true
+        }
+
+        // API routes that don't require auth
+        if (path.startsWith('/api/auth')) {
+          return true
+        }
+
+        // All other routes require authentication
+        return !!token
+      },
+    },
+  }
+)
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|icon.*|apple-icon.*|placeholder.*).*)',
+  ],
 }

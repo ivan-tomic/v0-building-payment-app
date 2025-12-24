@@ -16,19 +16,16 @@
 -- 8. Sign in with your credentials to access the admin dashboard
 
 -- The setup wizard will automatically:
--- - Create your Supabase Auth user
+-- - Hash your password using bcrypt
 -- - Create your admin user record in the users table
 -- - Assign you the 'admin' role
 -- - Redirect you to the admin dashboard
 
 -- If you prefer manual SQL creation instead:
--- 1. First, manually create an auth user in Supabase:
---    - Go to Supabase dashboard
---    - Go to Authentication > Users
---    - Click "Add user"
---    - Enter your email and password
---    - Copy the UUID
--- 2. Then run the INSERT query below with the actual UUID:
+-- 1. Hash your password using bcrypt (you can use online tools or Node.js):
+--    const bcrypt = require('bcryptjs');
+--    const hash = await bcrypt.hash('your-password', 10);
+-- 2. Then run the INSERT query below with the hashed password:
 --
--- INSERT INTO users (id, email, full_name, role, apartment_id, is_active, created_at, updated_at)
--- VALUES ('{PASTE_UUID_HERE}', 'iva@primer.com', 'Ivan Tomic', 'admin', NULL, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+-- INSERT INTO users (email, password_hash, full_name, role, apartment_id, is_active, created_at, updated_at)
+-- VALUES ('iva@primer.com', '{PASTE_HASHED_PASSWORD_HERE}', 'Ivan Tomic', 'admin', NULL, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);

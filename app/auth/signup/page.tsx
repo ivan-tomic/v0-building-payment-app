@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock, User } from 'lucide-react'
@@ -10,98 +9,51 @@ export default function SignupPage() {
   const [invitationCode, setInvitationCode] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // Validate password match
+    if (password !== confirmPassword) {
+      setError('Lozinke se ne podudaraju')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Check if invitation code is valid
-      const { data: invitationData, error: invitationError } = await supabase
-        .from('invitation_codes')
-        .select('*')
-        .eq('code', invitationCode)
-        .single()
-
-      if (invitationError || !invitationData || !invitationData.is_active || new Date(invitationData.expires_at) < new Date()) {
-        setError('Nevažeći ili istekao kod poziva')
-        setLoading(false)
-        return
-      }
-
-      if (invitationData.used_at) {
-        setError('Kod poziva je već korišten')
-        setLoading(false)
-        return
-      }
-
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          },
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          invitationCode,
+          email,
+          password,
+          fullName,
+        }),
       })
 
-      if (authError) {
-        setError(authError.message)
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Greška pri registraciji')
         setLoading(false)
         return
       }
 
-      if (!authData.user) {
-        setError('Greška pri kreiranju korisnika')
-        setLoading(false)
-        return
-      }
-
-      // Create user record in database
-      const { error: userError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: authData.user.id,
-            email,
-            full_name: fullName,
-            role: 'tenant',
-            apartment_id: invitationData.apartment_id,
-            invitation_code: invitationCode,
-            invitation_used: true,
-          },
-        ])
-
-      if (userError) {
-        setError(userError.message)
-        setLoading(false)
-        return
-      }
-
-      // Mark invitation as used
-      await supabase
-        .from('invitation_codes')
-        .update({
-          used_by: authData.user.id,
-          used_at: new Date().toISOString(),
-        })
-        .eq('code', invitationCode)
-
-      router.push('/auth/signin')
+      // Redirect to signin page on success
+      router.push('/auth/signin?registered=true')
     } catch (err) {
+      console.error('Signup error:', err)
       setError('Neočekivana greška')
-      console.error(err)
     } finally {
       setLoading(false)
     }
@@ -111,8 +63,12 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-foreground">Registracija stanara</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Upravljanje zgradom Skendera Kulenovića 5</p>
+          <h2 className="mt-6 text-3xl font-bold text-foreground">
+            Registracija stanara
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Upravljanje zgradom Skendera Kulenovića 5
+          </p>
         </div>
 
         <form onSubmit={handleSignup} className="mt-8 space-y-6">
@@ -191,6 +147,33 @@ export default function SignupPage() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-foreground">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4" />
+                Potvrda lozinke
+              </div>
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              className={`mt-1 block w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary bg-background text-foreground ${
+                confirmPassword && password !== confirmPassword
+                  ? 'border-red-500 dark:border-red-700'
+                  : 'border-input'
+              }`}
+              placeholder="Potvrdite lozinku"
+            />
+            {confirmPassword && password !== confirmPassword && (
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+                Lozinke se ne podudaraju
+              </p>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -201,7 +184,10 @@ export default function SignupPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             Već imate nalog?{' '}
-            <Link href="/auth/signin" className="font-medium text-primary hover:text-primary/90">
+            <Link
+              href="/auth/signin"
+              className="font-medium text-primary hover:text-primary/90"
+            >
               Prijavite se
             </Link>
           </p>

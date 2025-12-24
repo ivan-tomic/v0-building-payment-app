@@ -1,40 +1,29 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { formatDate } from '@/lib/utils'
 
 interface Expense {
   id: number
   title: string
-  amount: number
+  amount: string
   category: string
-  expense_date: string
+  description: string | null
+  expenseDate: string
   month: number
   year: number
-  description: string | null
 }
 
 export default function TenantExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
 
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
-        const { data, error } = await supabase
-          .from('expenses')
-          .select('*')
-          .order('year', { ascending: false })
-          .order('month', { ascending: false })
-
-        if (error) throw error
-        setExpenses(data || [])
+        const res = await fetch(`/api/expenses?year=${selectedYear}`)
+        const data = await res.json()
+        setExpenses(Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('Error fetching expenses:', error)
       } finally {
@@ -43,86 +32,86 @@ export default function TenantExpensesPage() {
     }
 
     fetchExpenses()
-  }, [supabase])
+  }, [selectedYear])
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      repair: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200',
-      maintenance: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200',
-      utilities: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200',
-      cleaning: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200',
-      other: 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-200',
-    }
-    return colors[category] || colors.other
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('bs', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
   }
 
+  const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount), 0)
+
   return (
-    <div>
+    <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">Трошкови зграде</h1>
-        <p className="text-muted-foreground mt-1">
-          Разбијеност трошкова одржавања
-        </p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Troškovi zgrade</h1>
+        <p className="text-muted-foreground">Pregled troškova održavanja zgrade</p>
+      </div>
+
+      <div className="mb-4 flex gap-4 items-center">
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+          className="px-3 py-2 border border-input rounded-md bg-background"
+        >
+          {Array.from({ length: 5 }, (_, i) => {
+            const year = new Date().getFullYear() - 2 + i
+            return (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            )
+          })}
+        </select>
+        
+        <div className="ml-auto text-sm text-muted-foreground">
+          Ukupno: <span className="font-bold text-foreground">{totalExpenses.toFixed(2)} BAM</span>
+        </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Учитавање...</p>
+        <p className="text-muted-foreground">Učitavanje...</p>
+      ) : expenses.length === 0 ? (
+        <div className="text-center py-12 bg-card rounded-lg border">
+          <p className="text-muted-foreground">Nema evidentiranih troškova za {selectedYear}.</p>
         </div>
       ) : (
-        <div className="bg-card border border-border rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted border-b border-border">
-                <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Назив
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Категорија
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Износ
-                  </th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                    Датум
-                  </th>
+        <div className="bg-card rounded-lg border overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Datum</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Naziv</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Kategorija</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Iznos</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Opis</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {expenses.map((expense) => (
+                <tr key={expense.id}>
+                  <td className="px-4 py-3 text-sm text-foreground">
+                    {formatDate(expense.expenseDate)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-foreground font-medium">
+                    {expense.title}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {expense.category}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-foreground">
+                    {parseFloat(expense.amount).toFixed(2)} BAM
+                  </td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                    {expense.description || '-'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {expenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground">
-                      Нема трошкова
-                    </td>
-                  </tr>
-                ) : (
-                  expenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-muted/50">
-                      <td className="px-6 py-4 text-sm text-foreground">
-                        {expense.title}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(
-                            expense.category
-                          )}`}
-                        >
-                          {expense.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-semibold text-foreground">
-                        {expense.amount.toFixed(2)} BAM
-                      </td>
-                      <td className="px-6 py-4 text-sm text-foreground">
-                        {formatDate(expense.expense_date)}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

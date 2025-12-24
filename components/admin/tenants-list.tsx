@@ -29,9 +29,6 @@ export default function TenantsList({ tenants }: TenantsListProps) {
                 Stan
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
-                Sprat
-              </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
                 Stanar
               </th>
               <th className="px-6 py-3 text-left text-sm font-semibold text-foreground">
@@ -47,9 +44,6 @@ export default function TenantsList({ tenants }: TenantsListProps) {
               <tr key={tenant.apartment.id} className="hover:bg-muted/50">
                 <td className="px-6 py-4 text-sm text-foreground">
                   {tenant.apartment.apartment_number}
-                </td>
-                <td className="px-6 py-4 text-sm text-foreground">
-                  {tenant.apartment.floor}.
                 </td>
                 <td className="px-6 py-4 text-sm">
                   {tenant.user ? (

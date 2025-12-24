@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
+import { useState } from 'react'
+import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Mail, Lock } from 'lucide-react'
@@ -14,19 +14,9 @@ export default function SigninPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    const errorParam = searchParams.get('error')
-    if (errorParam === 'profile_not_found') {
-      setError('Vaš korisnički profil nije pronađen u bazi podataka. Molimo koristite stranicu za čišćenje i kreirajte novi nalog.')
-    } else if (errorParam === 'profile_fetch_error') {
-      setError('Greška pri učitavanju profila. Ovo je vjerovatno problem sa RLS politikama.')
-    }
-  }, [searchParams])
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  // Check for callback URL or error from NextAuth
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard'
+  const authError = searchParams.get('error')
 
   const handleSignin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,44 +24,32 @@ export default function SigninPage() {
     setLoading(true)
 
     try {
-      console.log('[v0] Attempting signin for:', email)
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const result = await signIn('credentials', {
         email,
         password,
+        redirect: false,
       })
 
-      if (authError) {
-        console.error('[v0] Auth error:', authError)
-        setError(authError.message)
+      if (result?.error) {
+        setError(result.error)
         setLoading(false)
         return
       }
 
-      if (data.user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', data.user.id)
-          .single()
-
-        if (profileError || !profileData) {
-          console.error('[v0] Profile error:', profileError)
-          setError('Greška pri učitavanju profila')
-          setLoading(false)
-          return
-        }
-
-        console.log('[v0] Signin successful, redirecting to', profileData.role, 'dashboard')
-        
-        // Redirect based on role
-        if (profileData.role === 'admin') {
+      // Fetch user profile to determine redirect
+      const response = await fetch('/api/user/profile')
+      if (response.ok) {
+        const profile = await response.json()
+        if (profile.role === 'admin') {
           router.push('/admin')
         } else {
           router.push('/tenant')
         }
+      } else {
+        router.push(callbackUrl)
       }
     } catch (err) {
-      console.error('[v0] Signin exception:', err)
+      console.error('Signin error:', err)
       setError('Neočekivana greška')
     } finally {
       setLoading(false)
@@ -82,34 +60,18 @@ export default function SigninPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-foreground">
-            Prijava
-          </h2>
+          <h2 className="mt-6 text-3xl font-bold text-foreground">Prijava</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Upravljanje zgradom Skendera Kulenovića 5
           </p>
         </div>
 
         <form onSubmit={handleSignin} className="mt-8 space-y-6">
-          {error && (
+          {(error || authError) && (
             <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-3">
-              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-              {error.includes('RLS') && (
-                <Link 
-                  href="/fix-rls" 
-                  className="text-sm text-red-600 dark:text-red-400 underline mt-2 block"
-                >
-                  Popravi RLS politike →
-                </Link>
-              )}
-              {(error.includes('profil') || error.includes('bazi')) && (
-                <Link 
-                  href="/cleanup" 
-                  className="text-sm text-red-600 dark:text-red-400 underline mt-2 block"
-                >
-                  Idi na stranicu za čišćenje podataka
-                </Link>
-              )}
+              <p className="text-sm text-red-800 dark:text-red-200">
+                {error || authError}
+              </p>
             </div>
           )}
 
@@ -157,7 +119,10 @@ export default function SigninPage() {
 
           <p className="text-center text-sm text-muted-foreground">
             Nemate nalog?{' '}
-            <Link href="/auth/signup" className="font-medium text-primary hover:text-primary/90">
+            <Link
+              href="/auth/signup"
+              className="font-medium text-primary hover:text-primary/90"
+            >
               Registruj se sa kodom poziva
             </Link>
           </p>
